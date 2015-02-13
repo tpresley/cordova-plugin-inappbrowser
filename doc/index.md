@@ -284,9 +284,9 @@ The function is passed an `InAppBrowserEvent` object.
 
 ### Quick Example
 
-    var ref = window.open('http://apache.org', '_blank', 'hidden=yes');
+    var ref = window.open('http://apache.org', '_blank');
     // some time later...
-    ref.show();
+    ref.hide();
 
 ## executeScript
 
