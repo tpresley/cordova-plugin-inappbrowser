@@ -73,6 +73,7 @@ public class InAppBrowser extends CordovaPlugin {
     private static final String SELF = "_self";
     private static final String SYSTEM = "_system";
     // private static final String BLANK = "_blank";
+    private static final String DEFAULT_NAME = "__.default.__";
     private static final String EXIT_EVENT = "exit";
     private static final String LOCATION = "location";
     private static final String ZOOM = "zoom";
@@ -84,8 +85,10 @@ public class InAppBrowser extends CordovaPlugin {
     private static final String CLEAR_SESSION_CACHE = "clearsessioncache";
     private static final String HARDWARE_BACK_BUTTON = "hardwareback";
 
-    private InAppBrowserDialog dialog;
-    private WebView inAppWebView;
+    //private InAppBrowserDialog dialog;
+    private HashMap<String, InAppBrowserDialog> dialogs;
+    //private WebView inAppWebView;
+    private HashMap<String, WebView> inAppWebViews;
     private EditText edittext;
     private CallbackContext callbackContext;
     private boolean showLocationBar = true;
@@ -113,6 +116,12 @@ public class InAppBrowser extends CordovaPlugin {
             }
             final String target = t;
             final HashMap<String, Boolean> features = parseFeature(args.optString(2));
+            
+            String n = args.optString(3);
+            if (n == null || n.equals("") || n.equals(NULL)) {
+            	n = DEFAULT_NAME;
+            }
+            final String name = n;
             
             Log.d(LOG_TAG, "target = " + target);
             
@@ -172,7 +181,7 @@ public class InAppBrowser extends CordovaPlugin {
                         // load in InAppBrowser
                         else {
                             Log.d(LOG_TAG, "loading in InAppBrowser");
-                            result = showWebPage(url, features);
+                            result = showWebPage(url, features, name);
                         }
                     }
                     // SYSTEM
@@ -183,7 +192,7 @@ public class InAppBrowser extends CordovaPlugin {
                     // BLANK - or anything else
                     else {
                         Log.d(LOG_TAG, "in blank");
-                        result = showWebPage(url, features);
+                        result = showWebPage(url, features, name);
                     }
     
                     PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, result);
@@ -193,47 +202,79 @@ public class InAppBrowser extends CordovaPlugin {
             });
         }
         else if (action.equals("close")) {
-            closeDialog();
+            String n = args.optString(0);
+            if (n == null || n.equals("") || n.equals(NULL)) {
+            	n = DEFAULT_NAME;
+            }
+            final String name = n;
+            closeDialog(name);
         }
         else if (action.equals("injectScriptCode")) {
+            String n = args.optString(2);
+            if (n == null || n.equals("") || n.equals(NULL)) {
+            	n = DEFAULT_NAME;
+            }
+            final String name = n;
             String jsWrapper = null;
             if (args.getBoolean(1)) {
                 jsWrapper = String.format("prompt(JSON.stringify([eval(%%s)]), 'gap-iab://%s')", callbackContext.getCallbackId());
             }
-            injectDeferredObject(args.getString(0), jsWrapper);
+            injectDeferredObject(args.getString(0), jsWrapper, name);
         }
         else if (action.equals("injectScriptFile")) {
+            String n = args.optString(2);
+            if (n == null || n.equals("") || n.equals(NULL)) {
+            	n = DEFAULT_NAME;
+            }
+            final String name = n;
             String jsWrapper;
             if (args.getBoolean(1)) {
                 jsWrapper = String.format("(function(d) { var c = d.createElement('script'); c.src = %%s; c.onload = function() { prompt('', 'gap-iab://%s'); }; d.body.appendChild(c); })(document)", callbackContext.getCallbackId());
             } else {
                 jsWrapper = "(function(d) { var c = d.createElement('script'); c.src = %s; d.body.appendChild(c); })(document)";
             }
-            injectDeferredObject(args.getString(0), jsWrapper);
+            injectDeferredObject(args.getString(0), jsWrapper, name);
         }
         else if (action.equals("injectStyleCode")) {
+            String n = args.optString(2);
+            if (n == null || n.equals("") || n.equals(NULL)) {
+            	n = DEFAULT_NAME;
+            }
+            final String name = n;
             String jsWrapper;
             if (args.getBoolean(1)) {
                 jsWrapper = String.format("(function(d) { var c = d.createElement('style'); c.innerHTML = %%s; d.body.appendChild(c); prompt('', 'gap-iab://%s');})(document)", callbackContext.getCallbackId());
             } else {
                 jsWrapper = "(function(d) { var c = d.createElement('style'); c.innerHTML = %s; d.body.appendChild(c); })(document)";
             }
-            injectDeferredObject(args.getString(0), jsWrapper);
+            injectDeferredObject(args.getString(0), jsWrapper, name);
         }
         else if (action.equals("injectStyleFile")) {
+            String n = args.optString(2);
+            if (n == null || n.equals("") || n.equals(NULL)) {
+            	n = DEFAULT_NAME;
+            }
+            final String name = n;
             String jsWrapper;
             if (args.getBoolean(1)) {
                 jsWrapper = String.format("(function(d) { var c = d.createElement('link'); c.rel='stylesheet'; c.type='text/css'; c.href = %%s; d.head.appendChild(c); prompt('', 'gap-iab://%s');})(document)", callbackContext.getCallbackId());
             } else {
                 jsWrapper = "(function(d) { var c = d.createElement('link'); c.rel='stylesheet'; c.type='text/css'; c.href = %s; d.head.appendChild(c); })(document)";
             }
-            injectDeferredObject(args.getString(0), jsWrapper);
+            injectDeferredObject(args.getString(0), jsWrapper, name);
         }
         else if (action.equals("show")) {
+            String n = args.optString(0);
+            if (n == null || n.equals("") || n.equals(NULL)) {
+            	n = DEFAULT_NAME;
+            }
+            final String name = n;
             this.cordova.getActivity().runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    dialog.show();
+                    final InAppBrowserDialog d;
+                    d = dialogs.get(name);
+                    d.show();
                 }
             });
             PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
@@ -241,10 +282,17 @@ public class InAppBrowser extends CordovaPlugin {
             this.callbackContext.sendPluginResult(pluginResult);
         }
         else if (action.equals("hide")) {
+            String n = args.optString(0);
+            if (n == null || n.equals("") || n.equals(NULL)) {
+            	n = DEFAULT_NAME;
+            }
+            final String name = n;
             this.cordova.getActivity().runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    dialog.hide();
+                    final InAppBrowserDialog d;
+                    d = dialogs.get(name);
+                    d.hide();
                 }
             });
             PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
@@ -262,7 +310,9 @@ public class InAppBrowser extends CordovaPlugin {
      */
     @Override
     public void onReset() {
-        closeDialog();        
+        for (String name : dialogs.keySet()) {
+            closeDialog(name);
+        }
     }
     
     /**
@@ -270,7 +320,9 @@ public class InAppBrowser extends CordovaPlugin {
      * Stop listener.
      */
     public void onDestroy() {
-        closeDialog();
+        for (String name : dialogs.keySet()) {
+            closeDialog(name);
+        }
     }
     
     /**
@@ -289,8 +341,9 @@ public class InAppBrowser extends CordovaPlugin {
      *                    is properly injected, or null if the source string is JavaScript text
      *                    which should be executed directly.
      */
-    private void injectDeferredObject(String source, String jsWrapper) {
+    private void injectDeferredObject(String source, String jsWrapper, String name) {
         String scriptToInject;
+        final WebView wv = inAppWebViews.get(name);
         if (jsWrapper != null) {
             org.json.JSONArray jsonEsc = new org.json.JSONArray();
             jsonEsc.put(source);
@@ -307,9 +360,9 @@ public class InAppBrowser extends CordovaPlugin {
             public void run() {
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
                     // This action will have the side-effect of blurring the currently focused element
-                    inAppWebView.loadUrl("javascript:" + finalScriptToInject);
+                    wv.loadUrl("javascript:" + finalScriptToInject);
                 } else {
-                    inAppWebView.evaluateJavascript(finalScriptToInject, null);
+                    wv.evaluateJavascript(finalScriptToInject, null);
                 }
             }
         });
@@ -371,8 +424,8 @@ public class InAppBrowser extends CordovaPlugin {
     /**
      * Closes the dialog
      */
-    public void closeDialog() {
-        final WebView childView = this.inAppWebView;
+    public void closeDialog(String name) {
+        final WebView childView = this.inAppWebViews.get(name);
         // The JS protects against multiple calls, so this should happen only when
         // closeDialog() is called by other native code.
         if (childView == null) {
@@ -381,6 +434,7 @@ public class InAppBrowser extends CordovaPlugin {
         this.cordova.getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
+            	final InAppBrowserDialog dialog = dialogs.get(name);
                 childView.setWebViewClient(new WebViewClient() {
                     // NB: wait for about:blank before dismissing
                     public void onPageFinished(WebView view, String url) {
@@ -444,16 +498,17 @@ public class InAppBrowser extends CordovaPlugin {
      *
      * @param url to load
      */
-    private void navigate(String url) {
+    private void navigate(String url, String name) {
+        final WebView inAppWebView = this.inAppWebViews.get(name);
         InputMethodManager imm = (InputMethodManager)this.cordova.getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
         imm.hideSoftInputFromWindow(edittext.getWindowToken(), 0);
 
         if (!url.startsWith("http") && !url.startsWith("file:")) {
-            this.inAppWebView.loadUrl("http://" + url);
+            inAppWebView.loadUrl("http://" + url);
         } else {
-            this.inAppWebView.loadUrl(url);
+            inAppWebView.loadUrl(url);
         }
-        this.inAppWebView.requestFocus();
+        inAppWebView.requestFocus();
     }
 
 
@@ -485,7 +540,7 @@ public class InAppBrowser extends CordovaPlugin {
      * @param url           The url to load.
      * @param jsonObject
      */
-    public String showWebPage(final String url, HashMap<String, Boolean> features) {
+    public String showWebPage(final String url, HashMap<String, Boolean> features, String name) {
         // Determine if we should hide the location bar.
         showLocationBar = true;
         showZoomControls = true;
@@ -539,11 +594,12 @@ public class InAppBrowser extends CordovaPlugin {
             @SuppressLint("NewApi")
             public void run() {
                 // Let's create the main dialog
-                dialog = new InAppBrowserDialog(cordova.getActivity(), android.R.style.Theme_NoTitleBar);
+                final InAppBrowserDialog dialog = new InAppBrowserDialog(cordova.getActivity(), android.R.style.Theme_NoTitleBar);
                 dialog.getWindow().getAttributes().windowAnimations = android.R.style.Animation_Dialog;
                 dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
                 dialog.setCancelable(true);
                 dialog.setInAppBroswer(getInAppBrowser());
+                dialogs.set(name, dialog);
 
                 // Main container layout
                 LinearLayout main = new LinearLayout(cordova.getActivity());
@@ -628,7 +684,7 @@ public class InAppBrowser extends CordovaPlugin {
                     public boolean onKey(View v, int keyCode, KeyEvent event) {
                         // If the event is a key-down event on the "enter" button
                         if ((event.getAction() == KeyEvent.ACTION_DOWN) && (keyCode == KeyEvent.KEYCODE_ENTER)) {
-                          navigate(edittext.getText().toString());
+                          navigate(edittext.getText().toString(), name);
                           return true;
                         }
                         return false;
@@ -659,9 +715,10 @@ public class InAppBrowser extends CordovaPlugin {
                 });
 
                 // WebView
-                inAppWebView = new WebView(cordova.getActivity());
+                final WebView inAppWebView = new WebView(cordova.getActivity());
                 inAppWebView.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
                 inAppWebView.setWebChromeClient(new InAppChromeClient(thatWebView));
+                inAppWebViews.set(name, inAppWebView);
                 WebViewClient client = new InAppBrowserClient(thatWebView, edittext);
                 inAppWebView.setWebViewClient(client);
                 WebSettings settings = inAppWebView.getSettings();
