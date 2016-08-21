@@ -429,7 +429,7 @@ public class InAppBrowser extends CordovaPlugin {
     }
     public void closeDialog(String name) {
         final WebView childView = this.inAppWebViews.get(name);
-        final String thatName = name
+        final String thatName = name;
         // The JS protects against multiple calls, so this should happen only when
         // closeDialog() is called by other native code.
         if (childView == null) {
