@@ -610,7 +610,7 @@ public class InAppBrowser extends CordovaPlugin {
                 dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
                 dialog.setCancelable(true);
                 dialog.setInAppBroswer(getInAppBrowser());
-                thatDialogs.set(thatName, dialog);
+                thatDialogs.put(thatName, dialog);
 
                 // Main container layout
                 LinearLayout main = new LinearLayout(cordova.getActivity());
@@ -729,7 +729,7 @@ public class InAppBrowser extends CordovaPlugin {
                 final WebView inAppWebView = new WebView(cordova.getActivity());
                 inAppWebView.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
                 inAppWebView.setWebChromeClient(new InAppChromeClient(thatWebView));
-                thatInAppWebViews.set(thatName, inAppWebView);
+                thatInAppWebViews.put(thatName, inAppWebView);
                 WebViewClient client = new InAppBrowserClient(thatWebView, edittext);
                 inAppWebView.setWebViewClient(client);
                 WebSettings settings = inAppWebView.getSettings();
