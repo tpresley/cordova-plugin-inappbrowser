@@ -86,9 +86,9 @@ public class InAppBrowser extends CordovaPlugin {
     private static final String HARDWARE_BACK_BUTTON = "hardwareback";
 
     //private InAppBrowserDialog dialog;
-    private HashMap<String, InAppBrowserDialog> dialogs;
+    private HashMap<String, InAppBrowserDialog> dialogs = new HashMap<String, InAppBrowserDialog>();
     //private WebView inAppWebView;
-    private HashMap<String, WebView> inAppWebViews;
+    private HashMap<String, WebView> inAppWebViews = new HashMap<String, WebView>();
     private EditText edittext;
     private CallbackContext callbackContext;
     private boolean showLocationBar = true;
