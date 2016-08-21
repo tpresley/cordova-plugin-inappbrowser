@@ -424,8 +424,12 @@ public class InAppBrowser extends CordovaPlugin {
     /**
      * Closes the dialog
      */
+    public void closeDialog() {
+    	closeDialog(DEFAULT_NAME);
+    }
     public void closeDialog(String name) {
         final WebView childView = this.inAppWebViews.get(name);
+        final String thatName = name
         // The JS protects against multiple calls, so this should happen only when
         // closeDialog() is called by other native code.
         if (childView == null) {
@@ -434,7 +438,7 @@ public class InAppBrowser extends CordovaPlugin {
         this.cordova.getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
-            	final InAppBrowserDialog dialog = dialogs.get(name);
+            	final InAppBrowserDialog dialog = dialogs.get(thatName);
                 childView.setWebViewClient(new WebViewClient() {
                     // NB: wait for about:blank before dismissing
                     public void onPageFinished(WebView view, String url) {
@@ -463,8 +467,9 @@ public class InAppBrowser extends CordovaPlugin {
      * Checks to see if it is possible to go back one page in history, then does so.
      */
     public void goBack() {
-        if (this.inAppWebView.canGoBack()) {
-            this.inAppWebView.goBack();
+    	final WebView wv = this.inAppWebViews.get(DEFAULT_NAME);
+        if (wv.canGoBack()) {
+            wv.goBack();
         }
     }
 
@@ -473,7 +478,8 @@ public class InAppBrowser extends CordovaPlugin {
      * @return boolean
      */
     public boolean canGoBack() {
-        return this.inAppWebView.canGoBack();
+    	final WebView wv = this.inAppWebViews.get(DEFAULT_NAME);
+        return wv.canGoBack();
     }
 
     /**
@@ -488,8 +494,9 @@ public class InAppBrowser extends CordovaPlugin {
      * Checks to see if it is possible to go forward one page in history, then does so.
      */
     private void goForward() {
-        if (this.inAppWebView.canGoForward()) {
-            this.inAppWebView.goForward();
+    	final WebView wv = this.inAppWebViews.get(DEFAULT_NAME);
+        if (wv.canGoForward()) {
+            wv.goForward();
         }
     }
 
@@ -541,6 +548,8 @@ public class InAppBrowser extends CordovaPlugin {
      * @param jsonObject
      */
     public String showWebPage(final String url, HashMap<String, Boolean> features, String name) {
+        final String thatName = name;
+        
         // Determine if we should hide the location bar.
         showLocationBar = true;
         showZoomControls = true;
@@ -599,7 +608,7 @@ public class InAppBrowser extends CordovaPlugin {
                 dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
                 dialog.setCancelable(true);
                 dialog.setInAppBroswer(getInAppBrowser());
-                dialogs.set(name, dialog);
+                dialogs.set(thatName, dialog);
 
                 // Main container layout
                 LinearLayout main = new LinearLayout(cordova.getActivity());
@@ -684,7 +693,7 @@ public class InAppBrowser extends CordovaPlugin {
                     public boolean onKey(View v, int keyCode, KeyEvent event) {
                         // If the event is a key-down event on the "enter" button
                         if ((event.getAction() == KeyEvent.ACTION_DOWN) && (keyCode == KeyEvent.KEYCODE_ENTER)) {
-                          navigate(edittext.getText().toString(), name);
+                          navigate(edittext.getText().toString(), thatName);
                           return true;
                         }
                         return false;
@@ -710,7 +719,7 @@ public class InAppBrowser extends CordovaPlugin {
                 }
                 close.setOnClickListener(new View.OnClickListener() {
                     public void onClick(View v) {
-                        closeDialog();
+                        closeDialog(DEFAULT_NAME);
                     }
                 });
 
@@ -718,7 +727,7 @@ public class InAppBrowser extends CordovaPlugin {
                 final WebView inAppWebView = new WebView(cordova.getActivity());
                 inAppWebView.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
                 inAppWebView.setWebChromeClient(new InAppChromeClient(thatWebView));
-                inAppWebViews.set(name, inAppWebView);
+                inAppWebViews.set(thatName, inAppWebView);
                 WebViewClient client = new InAppBrowserClient(thatWebView, edittext);
                 inAppWebView.setWebViewClient(client);
                 WebSettings settings = inAppWebView.getSettings();
