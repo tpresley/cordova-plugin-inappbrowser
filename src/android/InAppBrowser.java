@@ -358,12 +358,14 @@ public class InAppBrowser extends CordovaPlugin {
             @SuppressLint("NewApi")
             @Override
             public void run() {
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
-                    // This action will have the side-effect of blurring the currently focused element
-                    wv.loadUrl("javascript:" + finalScriptToInject);
-                } else {
-                    wv.evaluateJavascript(finalScriptToInject, null);
-                }
+                try {
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+                        // This action will have the side-effect of blurring the currently focused element
+                        wv.loadUrl("javascript:" + finalScriptToInject);
+                    } else {
+                        wv.evaluateJavascript(finalScriptToInject, null);
+                    }
+                } catch (Exception e) {}
             }
         });
     }
